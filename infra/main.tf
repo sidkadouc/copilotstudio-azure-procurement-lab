@@ -34,7 +34,7 @@ resource "azurerm_search_service" "this" {
 }
 
 ##############################################################################
-# Azure AI Foundry (AIServices - single resource in Sweden Central)
+# Microsoft Foundry (AIServices - single resource in Sweden Central)
 # Hosts both embeddings and GPT-5.1 in the same region
 ##############################################################################
 

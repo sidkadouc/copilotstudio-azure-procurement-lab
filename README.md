@@ -49,21 +49,22 @@ End Users (Procurement Buyers)
 
 **Option A: GitHub Codespaces (recommended)**
 
-1. Go to the GitHub repository
-2. Click **Code** > **Codespaces** > **Create codespace on main**
+1. **Fork** this repository to your own GitHub account
+2. Go to your fork and click **Code** > **Codespaces** > **Create codespace on main**
 3. Wait for the container to build (~2-3 min) — all tools and extensions are pre-installed
 4. Once ready, open the terminal (PowerShell is the default)
 
 **Option B: VS Code Dev Container (local)**
 
 1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
-2. Clone the repo and open it in VS Code
+2. Fork and clone the repo, then open it in VS Code
 3. When prompted, click **Reopen in Container** (or run `Dev Containers: Reopen in Container` from the command palette)
 
 **Option C: Local setup**
 
 ```powershell
-git clone <repo-url>
+# Fork the repo first, then clone your fork
+git clone https://github.com/<YOUR_GITHUB_USERNAME>/copilotstudio-procurement-rag.git
 cd copilotstudio-procurement-rag
 ```
 
@@ -85,33 +86,22 @@ az login
 Deploy Azure AI Search, Azure OpenAI (embeddings + GPT), and the App Registration for SharePoint indexer auth.
 
 ```powershell
-cd infra
+# Auto-generate terraform.tfvars from your Azure CLI session
+cd scripts
+.\00-init-tfvars.ps1
 
-# Copy and edit the variables file
-cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars: set your subscription_id and tenant_id
-notepad terraform.tfvars
-```
-
-**terraform.tfvars** - fill in your values:
-```hcl
-subscription_id     = "<YOUR_SUBSCRIPTION_ID>"
-tenant_id           = "<YOUR_TENANT_ID>"
-resource_group_name = "rg-procurement-rag"
-location            = "swedencentral"
-search_sku          = "basic"
-```
-
-Then apply:
-```powershell
+# Deploy
+cd ../infra
 terraform init
 terraform apply
 ```
 
+> The script reads `subscription_id` and `tenant_id` from your active `az login` session and creates `infra/terraform.tfvars` automatically. Edit the file if you want to change the resource group name or region.
+
 > **What gets created:**
 > - Resource Group `rg-procurement-rag`
 > - Azure AI Search (basic SKU) with semantic reranker and managed identity
-> - Azure AI Services (Sweden Central) with `text-embedding-ada-002` + `gpt-5.1` deployments
+> - Microsoft Foundry (Sweden Central) with `text-embedding-ada-002` + `gpt-5.1` deployments
 > - Entra ID App Registration with Sites.Read.All permission (for SharePoint indexer)
 
 **Verify:** Note the outputs - you'll need the search endpoint and keys later.
