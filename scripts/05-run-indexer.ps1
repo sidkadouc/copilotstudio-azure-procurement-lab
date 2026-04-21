@@ -14,11 +14,12 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-Write-Host "[1/3] Reading Terraform outputs..." -ForegroundColor Yellow
-Push-Location (Join-Path $PSScriptRoot "..\infra")
-$searchEndpoint = (terraform output -raw search_service_endpoint)
-$searchKey      = (terraform output -raw search_admin_key)
-Pop-Location
+Write-Host "[1/3] Reading infrastructure config..." -ForegroundColor Yellow
+$infraConfigFile = Join-Path $PSScriptRoot ".infra-config.json"
+if (-not (Test-Path $infraConfigFile)) { throw "Run 01a-save-infra-config.ps1 first (after terraform apply)." }
+$infra = Get-Content $infraConfigFile | ConvertFrom-Json
+$searchEndpoint = $infra.search_service_endpoint
+$searchKey      = $infra.search_admin_key
 
 $indexerName = "sharepoint-indexer"
 $headers = @{ "api-key" = $searchKey; "Content-Type" = "application/json" }

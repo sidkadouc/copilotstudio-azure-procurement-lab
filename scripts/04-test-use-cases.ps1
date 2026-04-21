@@ -6,14 +6,15 @@
 param()
 $ErrorActionPreference = 'Stop'
 
-Write-Host "Reading Terraform outputs..." -ForegroundColor Yellow
-Push-Location (Join-Path $PSScriptRoot "..\infra")
-$searchEndpoint  = terraform output -raw search_service_endpoint
-$searchKey       = terraform output -raw search_admin_key
-$foundryEndpoint = (terraform output -raw openai_endpoint).TrimEnd('/')
-$foundryKey      = terraform output -raw openai_key
-$gptDeployment   = terraform output -raw gpt51_deployment_name
-Pop-Location
+Write-Host "Reading infrastructure config..." -ForegroundColor Yellow
+$infraConfigFile = Join-Path $PSScriptRoot ".infra-config.json"
+if (-not (Test-Path $infraConfigFile)) { throw "Run 01a-save-infra-config.ps1 first (after terraform apply)." }
+$infra = Get-Content $infraConfigFile | ConvertFrom-Json
+$searchEndpoint  = $infra.search_service_endpoint
+$searchKey       = $infra.search_admin_key
+$foundryEndpoint = $infra.openai_endpoint.TrimEnd('/')
+$foundryKey      = $infra.openai_key
+$gptDeployment   = $infra.gpt51_deployment_name
 
 $searchHeaders = @{ "api-key" = $searchKey; "Content-Type" = "application/json" }
 $gptHeaders    = @{ "api-key" = $foundryKey; "Content-Type" = "application/json" }

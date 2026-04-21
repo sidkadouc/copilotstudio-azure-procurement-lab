@@ -104,11 +104,13 @@ terraform apply
 > - Microsoft Foundry (Sweden Central) with `text-embedding-ada-002` + `gpt-5.1` deployments
 > - Entra ID App Registration with Sites.Read.All permission (for SharePoint indexer)
 
-**Verify:** Note the outputs - you'll need the search endpoint and keys later.
-
+**After apply completes**, export the outputs so all scripts can use them:
 ```powershell
-terraform output
+cd ../scripts
+.\01a-save-infra-config.ps1
 ```
+
+> This saves endpoints, keys, and IDs to `scripts/.infra-config.json`. All subsequent scripts read from this file — no need for `terraform output` access.
 
 ---
 
@@ -229,9 +231,9 @@ This runs 4 test scenarios:
 #### 8c. Connect Azure AI Search as Knowledge Source
 
 1. Go to **Knowledge** > **Add knowledge** > **Azure AI Search**
-2. Fill in:
-   - **Endpoint:** `<search_service_endpoint>` (from `terraform output`)
-   - **API Key:** `<search_admin_key>` (from `terraform output`)
+2. Fill in (values are in `scripts/.infra-config.json`):
+   - **Endpoint:** `search_service_endpoint`
+   - **API Key:** `search_admin_key`
    - **Index name:** `marches-index`
 3. Save
 

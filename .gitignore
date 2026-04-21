@@ -6,8 +6,9 @@ infra/tfplan
 infra/.terraform/
 infra/.terraform.lock.hcl
 
-# ---- Scripts runtime config (contains IDs, tokens) ----
+# ---- Scripts runtime config (contains IDs, tokens, keys) ----
 scripts/.sharepoint-config.json
+scripts/.infra-config.json
 
 # ---- Environment / secrets ----
 .env

@@ -7,17 +7,18 @@ $ErrorActionPreference = 'Stop'
 
 $spConfig = Get-Content (Join-Path $PSScriptRoot ".sharepoint-config.json") | ConvertFrom-Json
 
-Write-Host "[1/5] Reading Terraform outputs..." -ForegroundColor Yellow
-Push-Location (Join-Path $PSScriptRoot "..\infra")
-$searchEndpoint = (terraform output -raw search_service_endpoint)
-$searchKey = (terraform output -raw search_admin_key)
-$openaiEndpoint = (terraform output -raw openai_endpoint).TrimEnd('/')
-$openaiKey = (terraform output -raw openai_key)
-$embeddingModel = (terraform output -raw openai_embedding_deployment)
-$appClientId = (terraform output -raw app_registration_client_id)
-$appSecret = (terraform output -raw app_registration_client_secret)
-$tenantId = (terraform output -raw tenant_id)
-Pop-Location
+Write-Host "[1/5] Reading infrastructure config..." -ForegroundColor Yellow
+$infraConfigFile = Join-Path $PSScriptRoot ".infra-config.json"
+if (-not (Test-Path $infraConfigFile)) { throw "Run 01a-save-infra-config.ps1 first (after terraform apply)." }
+$infra = Get-Content $infraConfigFile | ConvertFrom-Json
+$searchEndpoint = $infra.search_service_endpoint
+$searchKey      = $infra.search_admin_key
+$openaiEndpoint = $infra.openai_endpoint.TrimEnd('/')
+$openaiKey      = $infra.openai_key
+$embeddingModel = $infra.openai_embedding_deployment
+$appClientId    = $infra.app_registration_client_id
+$appSecret      = $infra.app_registration_client_secret
+$tenantId       = $infra.tenant_id
 
 $headers = @{ "api-key" = $searchKey }
 $indexName = "marches-index"

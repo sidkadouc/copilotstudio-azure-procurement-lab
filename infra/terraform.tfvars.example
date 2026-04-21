@@ -6,7 +6,8 @@ environment_name   = "poc"
 unique_suffix      = "GENERATED_BY_INIT_SCRIPT"
 
 # AI Search - basic is enough for POC (free tier has no skillset support)
-search_sku = "basic"
+search_sku      = "basic"
+search_location = "northeurope"  # Override if swedencentral has capacity issues
 
 # SharePoint
 sharepoint_site_name  = "Marches GHT Contoso"

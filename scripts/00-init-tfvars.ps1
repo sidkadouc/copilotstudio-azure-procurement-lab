@@ -56,6 +56,10 @@ foreach ($line in $lines) {
         $output += "tenant_id          = `"$tenantId`""
     } elseif ($line -match '^\s*unique_suffix\s*=') {
         $output += "unique_suffix      = `"$uniqueSuffix`""
+    } elseif ($line -match '^\s*location\s*=') {
+        $output += "location           = `"swedencentral`""
+    } elseif ($line -match '^\s*search_location\s*=') {
+        $output += "search_location = `"northeurope`""
     } else {
         $output += $line
     }
