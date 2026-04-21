@@ -214,58 +214,111 @@ This runs 4 test scenarios:
 
 ---
 
-### Step 8: Configure Copilot Studio Agent
+### Step 8: Create the Copilot Studio Agent
 
-#### 8a. Create the Agent
+#### 8a. Create a New Agent
 
 1. Go to [https://copilotstudio.microsoft.com](https://copilotstudio.microsoft.com)
-2. Click **Create** > **New agent**
-3. Name: **Assistant Marchés Publics GHT Contoso**
-4. Language: **French**
+2. Select your environment (top-right)
+3. Click **Create** > **New agent**
+4. Choose **"Skip to configure"** (bottom left) to skip the wizard
+5. Set the agent name: `Assistant Marchés Publics GHT Contoso`
+6. Set the language to **French**
 
-#### 8b. Set System Instructions
+#### 8b. Paste the System Instructions
 
-1. Go to **Agent** > **Settings** > **Instructions**
-2. Paste the content from `copilotstudio-prompt.md` (or run `.\agent-config.ps1` to display it)
+1. In the agent editor, click **Instructions** (or go to **Settings** > **Generative AI** > **Instructions**)
+2. Paste the following system prompt:
 
-#### 8c. Connect Azure AI Search as Knowledge Source
+```
+Tu es l'Assistant Marchés Publics du GHT Contoso, un expert en achats hospitaliers.
+Tu aides les acheteurs des établissements du groupement à exploiter la base documentaire des marchés publics.
 
-1. Go to **Knowledge** > **Add knowledge** > **Azure AI Search**
-2. Fill in (values are in `scripts/.infra-config.json`):
-   - **Endpoint:** `search_service_endpoint`
-   - **API Key:** `search_admin_key`
-   - **Index name:** `marches-index`
+Tu as accès à une base de connaissances Azure AI Search contenant les appels d'offres, études de marché et rapports d'analyse du GHT. Utilise TOUJOURS cette source pour répondre.
+
+Ce que tu sais faire :
+1. Rechercher un marché existant pour un produit, une catégorie ou un fournisseur. Tu donnes la référence, la date, le montant, les lots et le titulaire.
+2. Analyser la conformité d'un appel d'offres : critères techniques, normes (CE, ISO, ANSM), spécifications obligatoires, points de vigilance réglementaire.
+3. Extraire les SLA et pénalités : délais de livraison, disponibilité, pénalités de retard, maintenance (GTI/GTR), clauses de résiliation.
+4. Analyser et challenger le choix des candidats : reconstituer la grille de notation, proposer ta propre analyse critique, comparer ton classement avec celui de l'acheteur, expliquer les écarts et identifier les risques.
+5. Comparer plusieurs marchés : tableaux croisés, tendances de prix, fournisseurs récurrents, anomalies.
+
+Règles absolues :
+- Cite TOUJOURS la référence du marché (ex: AO-2024-DM-0488) et le document source.
+- Précise HT/TTC et la durée pour les montants.
+- Ne fabrique JAMAIS de données. Si tu ne trouves pas, dis-le.
+- Utilise des tableaux comparatifs dès que pertinent.
+- Réponds en français.
+- Pour l'analyse candidats : | Candidat | Prix | Note technique | Note globale | Rang | puis analyse critique.
+- Quand on te demande de "challenger", sois constructif : arguments pour ET contre, risques, suggestions d'amélioration.
+```
+
+3. Click **Save**
+
+#### 8c. Add Azure AI Search as Knowledge Source
+
+1. In the left panel, click **Knowledge**
+2. Click **+ Add knowledge**
+3. Select **Azure AI Search**
+4. Fill in the connection details (values are in `scripts/.infra-config.json`):
+
+| Field | Value |
+|---|---|
+| **Index name** | `marches-index` |
+| **Endpoint** | Copy `search_service_endpoint` from `.infra-config.json` |
+| **API Key** | Copy `search_admin_key` from `.infra-config.json` |
+
+5. Click **Add** > **Save**
+
+> **Tip:** You can display the values by running: `Get-Content scripts/.infra-config.json | ConvertFrom-Json | Select-Object search_service_endpoint, search_admin_key`
+
+#### 8d. Enable Generative Orchestration
+
+1. Go to **Settings** (gear icon) > **Generative AI**
+2. Set orchestration mode to **"Generative"** (not "Classic")
 3. Save
-
-#### 8d. Enable Generative AI Mode
-
-1. Go to **Settings** > **Generative AI**
-2. Select **"Generative"** (not "Classic")
-3. Save
-
-#### 8e. Add Conversation Starters (Optional)
-
-Add these sample questions:
-- "On a un marché existant pour les gants chirurgicaux ?"
-- "Quels sont les critères de conformité pour les réactifs de laboratoire ?"
-- "Quels SLA et pénalités pour le marché ambulances SMUR ?"
-- "Analyse les candidats du marché mobilier médical"
-- "Fais un tableau récapitulatif de tous les marchés"
 
 ---
 
-### Step 9: Test the Agent
+### Step 9: Test the Agent in Copilot Studio
 
-Try these queries in Copilot Studio test chat:
+Open the **Test** panel (bottom-right chat icon) and try these prompts in order:
 
-| Query | Expected behavior |
-|---|---|
-| "On a un marché pour les sutures chirurgicales ?" | Returns AO-2025-DM-0245 with multi-attributaire Ethicon/B.Braun |
-| "Quels sont les SLA pour l'endoscopie ?" | Extracts GTI 4h, GTR 24h, 98% availability from AO-2025-BIO-0134 |
-| "Compare les marchés biomédicaux" | Table comparing AO-2024-BIO-0847, 0955, 1203, and AO-2025-BIO-0134 |
-| "Quels marchés ont des clauses environnementales ?" | Finds transport (AO-2025-TR-0289), antiseptics, cleaning contracts |
-| "Challenge le choix des candidats pour la télémedecine" | Analyzes AO-2025-IT-0312, compares Doctolib vs Parsys |
-| "Quel est le budget total des marchés 2025 ?" | Sums the 7 new 2025 contracts |
+**Prompt 1 — Search an existing contract:**
+```
+On a un marché existant pour les gants chirurgicaux ?
+```
+> Expected: Returns reference **AO-2024-DM-0488**, supplier Medline Industries, 498 000 € HT, with lot details.
+
+**Prompt 2 — Extract SLAs and penalties:**
+```
+Quels sont les SLA et pénalités pour le marché d'endoscopie ?
+```
+> Expected: Returns **AO-2025-BIO-0134** with GTI 4h, GTR 24h, 98% availability, penalties 500€/day.
+
+**Prompt 3 — Compliance analysis:**
+```
+Quelles sont les exigences de conformité pour les sutures chirurgicales ?
+```
+> Expected: Returns **AO-2025-DM-0245** with CE class III, MDR regulation, ISO 13485, UDI traceability, ISO 10993 biocompatibility.
+
+**Prompt 4 — Compare contracts:**
+```
+Fais un tableau comparatif de tous les marchés biomédicaux avec montants et attributaires
+```
+> Expected: Table with AO-2024-BIO-0847, 0955, 1203, and AO-2025-BIO-0134 — 4 contracts, amounts, suppliers.
+
+**Prompt 5 — Challenge candidate selection:**
+```
+Analyse les candidats du marché télémedecine et dis-moi si tu aurais fait le même choix
+```
+> Expected: Analyzes **AO-2025-IT-0312**, reconstructs the scoring grid, discusses Doctolib vs Parsys trade-offs, gives a critical opinion.
+
+**Prompt 6 — Cross-document analysis:**
+```
+Quels marchés ont un engagement environnemental ou RSE ?
+```
+> Expected: Finds transport (AO-2025-TR-0289), antiseptics (AC-2025-MED-0891), cleaning (AO-2024-HOT-0412), and restauration (PA-2024-HOT-0156).
 
 ---
 
