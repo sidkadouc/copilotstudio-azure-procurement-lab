@@ -1,5 +1,5 @@
 output "resource_group_name" {
-  value = azurerm_resource_group.this.name
+  value = local.rg_name
 }
 
 output "search_service_name" {

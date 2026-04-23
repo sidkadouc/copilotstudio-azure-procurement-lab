@@ -60,6 +60,9 @@ foreach ($line in $lines) {
         $output += "location           = `"swedencentral`""
     } elseif ($line -match '^\s*search_location\s*=') {
         $output += "search_location = `"northeurope`""
+    } elseif ($line -match '^\s*create_resource_group\s*=') {
+        # Preserve the user's choice from the example file
+        $output += $line
     } else {
         $output += $line
     }

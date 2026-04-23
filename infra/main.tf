@@ -4,16 +4,27 @@ locals {
     purpose    = "procurement-rag-poc"
     managed-by = "terraform"
   })
+
+  # Resolved RG name & location — works for both create and existing modes
+  rg_name     = var.create_resource_group ? azurerm_resource_group.this[0].name : data.azurerm_resource_group.existing[0].name
+  rg_location = var.create_resource_group ? azurerm_resource_group.this[0].location : data.azurerm_resource_group.existing[0].location
 }
 
 ##############################################################################
 # Resource Group
+# Set create_resource_group = false to use an existing RG (Contributor is enough)
 ##############################################################################
 
 resource "azurerm_resource_group" "this" {
+  count    = var.create_resource_group ? 1 : 0
   name     = var.resource_group_name
   location = var.location
   tags     = local.default_tags
+}
+
+data "azurerm_resource_group" "existing" {
+  count = var.create_resource_group ? 0 : 1
+  name  = var.resource_group_name
 }
 
 ##############################################################################
@@ -22,8 +33,8 @@ resource "azurerm_resource_group" "this" {
 
 resource "azurerm_search_service" "this" {
   name                          = "search-procurement-${local.name_suffix}"
-  resource_group_name           = azurerm_resource_group.this.name
-  location                      = var.search_location != "" ? var.search_location : azurerm_resource_group.this.location
+  resource_group_name           = local.rg_name
+  location                      = var.search_location != "" ? var.search_location : local.rg_location
   sku                           = var.search_sku
   semantic_search_sku           = "standard"
   tags                          = local.default_tags
@@ -40,8 +51,8 @@ resource "azurerm_search_service" "this" {
 
 resource "azurerm_cognitive_account" "foundry" {
   name                  = "ai-procurement-${local.name_suffix}"
-  resource_group_name   = azurerm_resource_group.this.name
-  location              = azurerm_resource_group.this.location
+  resource_group_name   = local.rg_name
+  location              = local.rg_location
   kind                  = "AIServices"
   sku_name              = "S0"
   tags                  = local.default_tags

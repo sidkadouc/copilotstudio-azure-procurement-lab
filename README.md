@@ -99,10 +99,23 @@ terraform apply
 > The script reads `subscription_id` and `tenant_id` from your active `az login` session and creates `infra/terraform.tfvars` automatically. Edit the file if you want to change the resource group name or region.
 
 > **What gets created:**
-> - Resource Group `rg-procurement-rag`
+> - Resource Group `rg-procurement-rag` (unless using an existing one — see below)
 > - Azure AI Search (basic SKU) with semantic reranker and managed identity
 > - Microsoft Foundry (Sweden Central) with `text-embedding-ada-002` + `gpt-5.1` deployments
 > - Entra ID App Registration with Sites.Read.All permission (for SharePoint indexer)
+
+#### Using an existing Resource Group
+
+If you don't have subscription-level permissions (Owner/Contributor) but you are **Contributor on an existing Resource Group**, you can deploy into it instead of creating a new one:
+
+1. Edit `infra/terraform.tfvars` (or copy from `infra/terraform.tfvars.existing-rg.example`):
+   ```hcl
+   create_resource_group = false
+   resource_group_name   = "my-existing-resource-group"
+   ```
+2. Run `terraform apply` as usual — Terraform will read the existing RG and create all resources inside it.
+
+> **Note:** The Entra ID App Registration + admin consent (`Sites.Read.All`) is a **tenant-level** operation. You still need the **Application Administrator** (or Global Admin) Entra ID role, or ask someone to pre-create the App Registration for you.
 
 **After apply completes**, export the outputs so all scripts can use them:
 ```powershell
@@ -131,6 +144,30 @@ az login
 > 3. Saves site/drive IDs to `scripts/.sharepoint-config.json`
 
 **Verify:** Open the SharePoint site URL printed in the output and confirm the 8 folders exist.
+
+#### Using an existing SharePoint site
+
+If you already have a SharePoint site with documents, skip `01-create-sharepoint-site.ps1` and manually create `scripts/.sharepoint-config.json`:
+
+```json
+{
+  "groupId": "<your-m365-group-id>",
+  "siteId": "<your-sharepoint-site-id>",
+  "siteUrl": "https://<tenant>.sharepoint.com/sites/<your-site>",
+  "driveId": "<your-document-library-drive-id>"
+}
+```
+
+You can retrieve these values via Graph API:
+```powershell
+$token = az account get-access-token --resource "https://graph.microsoft.com" --query accessToken -o tsv
+$headers = @{ "Authorization" = "Bearer $token" }
+$site = Invoke-RestMethod -Uri "https://graph.microsoft.com/v1.0/sites/<tenant>.sharepoint.com:/sites/<your-site>" -Headers $headers
+$drive = Invoke-RestMethod -Uri "https://graph.microsoft.com/v1.0/sites/$($site.id)/drive" -Headers $headers
+@{ groupId = ""; siteId = $site.id; siteUrl = $site.webUrl; driveId = $drive.id } | ConvertTo-Json
+```
+
+> Make sure the existing site has the 8 category folders (BIOMEDICAL, DISPOSITIFS-MEDICAUX, etc.) if you plan to use the upload script, or upload your own documents directly.
 
 ---
 

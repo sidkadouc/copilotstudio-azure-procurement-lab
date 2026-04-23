@@ -1,16 +1,17 @@
 subscription_id    = "00000000-0000-0000-0000-000000000000"
 tenant_id          = "00000000-0000-0000-0000-000000000000"
-resource_group_name = "rg-procurement-rag"
+resource_group_name = "my-existing-resource-group"
 location           = "swedencentral"
 environment_name   = "poc"
 unique_suffix      = "GENERATED_BY_INIT_SCRIPT"
 
-# Set to false to use an existing resource group (Contributor on RG is enough)
-create_resource_group = true
+# Set to true to use an existing resource group instead of creating one.
+# The resource group must already exist. You need at least Contributor on it.
+create_resource_group = false
 
-# AI Search - basic is enough for POC (free tier has no skillset support)
+# AI Search
 search_sku      = "basic"
-search_location = "northeurope"  # Override if swedencentral has capacity issues
+search_location = "northeurope"
 
 # SharePoint
 sharepoint_site_name  = "Marches GHT Contoso"

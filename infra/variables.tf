@@ -14,6 +14,12 @@ variable "resource_group_name" {
   default     = "rg-procurement-rag"
 }
 
+variable "create_resource_group" {
+  description = "Set to true to create a new resource group, false to use an existing one. When false, the resource group must already exist."
+  type        = bool
+  default     = true
+}
+
 variable "location" {
   description = "Azure region for resources."
   type        = string
