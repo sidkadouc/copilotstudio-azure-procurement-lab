@@ -1,9 +1,23 @@
 <#
 .SYNOPSIS
-    Test prompts for each use case - use these to demo the agent in Copilot Studio.
-    Run this script to test directly against AI Search + GPT-5.1 via REST API.
+    Test prompts for each use case against AI Search + GPT-5.1 via REST API.
+
+.DESCRIPTION
+    Queries the AI Search index and sends results to GPT for analysis.
+    By default uses API key auth. Use -WithACL to enable permission-filtered queries
+    (requires ACL query-time preview registration on the subscription).
+
+.PARAMETER WithACL
+    Enable ACL-filtered queries using Bearer token + x-ms-query-source-authorization.
+    Requires: RBAC role on search service + ACL preview registration.
+
+.EXAMPLE
+    .\04-test-use-cases.ps1              # API key auth, all documents visible
+    .\04-test-use-cases.ps1 -WithACL     # Bearer auth + ACL permission filtering
 #>
-param()
+param(
+    [switch]$WithACL
+)
 $ErrorActionPreference = 'Stop'
 
 Write-Host "Reading infrastructure config..." -ForegroundColor Yellow
@@ -16,12 +30,49 @@ $foundryEndpoint = $infra.openai_endpoint.TrimEnd('/')
 $foundryKey      = $infra.openai_key
 $gptDeployment   = $infra.gpt51_deployment_name
 
-$searchHeaders = @{ "api-key" = $searchKey; "Content-Type" = "application/json" }
-$gptHeaders    = @{ "api-key" = $foundryKey; "Content-Type" = "application/json" }
+$gptHeaders = @{ "api-key" = $foundryKey; "Content-Type" = "application/json" }
+
+if ($WithACL) {
+    # ACL mode: Bearer token + x-ms-query-source-authorization
+    Write-Host "ACL mode - getting user token via Azure CLI..." -ForegroundColor Yellow
+    $searchToken = az account get-access-token --resource "https://search.azure.com" --query accessToken -o tsv
+    if (-not $searchToken) { throw "Failed to get search token. Run 'az login' first." }
+
+    $graphToken = az account get-access-token --resource "https://graph.microsoft.com" --query accessToken -o tsv
+    $me = Invoke-RestMethod -Uri "https://graph.microsoft.com/v1.0/me?`$select=displayName,userPrincipalName,id" -Headers @{"Authorization"="Bearer $graphToken"}
+    Write-Host "  User: $($me.displayName) ($($me.userPrincipalName))" -ForegroundColor Green
+    Write-Host "  OID:  $($me.id)" -ForegroundColor Green
+    Write-Host "  Queries filtered by SharePoint permissions" -ForegroundColor Cyan
+
+    $searchHeaders = @{
+        "Authorization"                    = "Bearer $searchToken"
+        "x-ms-query-source-authorization"  = "Bearer $searchToken"
+        "Content-Type"                     = "application/json"
+    }
+} else {
+    Write-Host "Standard mode (API key, no ACL filter)" -ForegroundColor Gray
+    $searchHeaders = @{ "api-key" = $searchKey; "Content-Type" = "application/json" }
+}
+
+$apiVersion = "2025-11-01-preview"
 
 function Search-Index([string]$Query, [int]$Top = 5) {
-    $body = @{ search = $Query; top = $Top; select = "title,chunk"; queryType = "simple" } | ConvertTo-Json
-    $r = Invoke-RestMethod -Uri "$searchEndpoint/indexes/marches-index/docs/search?api-version=2024-05-01-preview" -Method POST -Headers $searchHeaders -Body ([System.Text.Encoding]::UTF8.GetBytes($body))
+    $body = @{
+        search                = $Query
+        top                   = $Top
+        select                = "title,chunk"
+        queryType             = "semantic"
+        semanticConfiguration = "default"
+    } | ConvertTo-Json
+    $r = Invoke-RestMethod -Uri "$searchEndpoint/indexes/marches-index/docs/search?api-version=$apiVersion" -Method POST -Headers $searchHeaders -Body ([System.Text.Encoding]::UTF8.GetBytes($body))
+
+    $count = $r.value.Count
+    if ($WithACL) {
+        Write-Host "  Results: $count documents (ACL-filtered)" -ForegroundColor Gray
+    } else {
+        Write-Host "  Results: $count documents" -ForegroundColor Gray
+    }
+
     return ($r.value | ForEach-Object { "[$($_.title)]`n$($_.chunk)" }) -join "`n---`n"
 }
 
@@ -113,5 +164,10 @@ $answer5 = Ask-GPT $systemPrompt "Voici des extraits de marchés publics :`n$con
 Write-Host $answer5
 
 Write-Host "`n========================================" -ForegroundColor Green
-Write-Host " TESTS TERMINES" -ForegroundColor Green
+Write-Host " TESTS TERMINES $(if ($WithACL) { '(ACL MODE)' } else { '(NO ACL)' })" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
+if (-not $WithACL) {
+    Write-Host ""
+    Write-Host "Tip: Run with -WithACL to test permission-filtered queries:" -ForegroundColor Gray
+    Write-Host "  .\04-test-use-cases.ps1 -WithACL" -ForegroundColor Gray
+}

@@ -27,7 +27,7 @@ $headers = @{ "api-key" = $searchKey; "Content-Type" = "application/json" }
 # ---- Check current indexer status ----
 Write-Host "[2/3] Checking indexer status..." -ForegroundColor Yellow
 try {
-    $status = Invoke-RestMethod -Uri "$searchEndpoint/indexers/$indexerName/status?api-version=2024-05-01-preview" -Method GET -Headers $headers
+    $status = Invoke-RestMethod -Uri "$searchEndpoint/indexers/$indexerName/status?api-version=2025-11-01-preview" -Method GET -Headers $headers
     $lastRun = $status.lastResult
     if ($lastRun) {
         Write-Host "  Last run: $($lastRun.status) at $($lastRun.startTime)" -ForegroundColor Gray
@@ -41,7 +41,7 @@ try {
 if ($ResetFirst) {
     Write-Host "  Resetting indexer (will reprocess ALL documents)..." -ForegroundColor Yellow
     try {
-        Invoke-RestMethod -Uri "$searchEndpoint/indexers/$indexerName/reset?api-version=2024-05-01-preview" -Method POST -Headers $headers | Out-Null
+        Invoke-RestMethod -Uri "$searchEndpoint/indexers/$indexerName/reset?api-version=2025-11-01-preview" -Method POST -Headers $headers | Out-Null
         Write-Host "  Reset OK" -ForegroundColor Green
     } catch {
         Write-Host "  Reset failed: $($_.Exception.Message)" -ForegroundColor Red
@@ -51,7 +51,7 @@ if ($ResetFirst) {
 # ---- Run indexer ----
 Write-Host "[3/3] Running indexer..." -ForegroundColor Yellow
 try {
-    Invoke-RestMethod -Uri "$searchEndpoint/indexers/$indexerName/run?api-version=2024-05-01-preview" -Method POST -Headers $headers | Out-Null
+    Invoke-RestMethod -Uri "$searchEndpoint/indexers/$indexerName/run?api-version=2025-11-01-preview" -Method POST -Headers $headers | Out-Null
     Write-Host "  Indexer started successfully!" -ForegroundColor Green
 } catch {
     $msg = if ($_.ErrorDetails.Message) { $_.ErrorDetails.Message } else { $_.Exception.Message }
@@ -64,4 +64,4 @@ try {
 
 Write-Host ""
 Write-Host "The indexer runs asynchronously. New documents should be available in ~5-15 minutes." -ForegroundColor Cyan
-Write-Host "Check status: $searchEndpoint/indexers/$indexerName/status?api-version=2024-05-01-preview" -ForegroundColor Gray
+Write-Host "Check status: $searchEndpoint/indexers/$indexerName/status?api-version=2025-11-01-preview" -ForegroundColor Gray

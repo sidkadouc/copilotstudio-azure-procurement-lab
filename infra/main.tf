@@ -38,6 +38,8 @@ resource "azurerm_search_service" "this" {
   sku                           = var.search_sku
   semantic_search_sku           = "standard"
   tags                          = local.default_tags
+  authentication_failure_mode   = "http401WithBearerChallenge"
+  local_authentication_enabled  = true
 
   identity {
     type = "SystemAssigned"
@@ -98,7 +100,7 @@ resource "azurerm_cognitive_deployment" "gpt51" {
 }
 
 ##############################################################################
-# App Registration (for SharePoint indexer auth)
+# App Registration (for SharePoint indexer auth + Copilot Studio user auth)
 ##############################################################################
 
 data "azuread_client_config" "current" {}
@@ -107,12 +109,41 @@ resource "azuread_application" "search_sp" {
   display_name = "AI Search - SharePoint Indexer - ${local.name_suffix}"
   owners       = [data.azuread_client_config.current.object_id]
 
+  # Redirect URI for Copilot Studio / Bot Framework OAuth
+  web {
+    redirect_uris = ["https://token.botframework.com/.auth/web/redirect"]
+
+    implicit_grant {
+      access_token_issuance_enabled = true
+      id_token_issuance_enabled     = true
+    }
+  }
+
   required_resource_access {
     resource_app_id = "00000003-0000-0000-c000-000000000000" # Microsoft Graph
 
+    # Application permission: Sites.FullControl.All (AI Search indexer + ACL sync)
     resource_access {
-      id   = "a82116e5-55eb-4c41-a434-62fe8a61c773" # Sites.FullControl.All (application) - required for ACL sync
+      id   = "a82116e5-55eb-4c41-a434-62fe8a61c773" # Sites.FullControl.All
       type = "Role"
+    }
+
+    # Delegated permissions (Copilot Studio user sign-in + ACL query)
+    resource_access {
+      id   = "37f7f235-527c-4136-accd-4a02d197296e" # openid
+      type = "Scope"
+    }
+    resource_access {
+      id   = "14dad69e-099b-42c9-810b-d002981feec1" # profile
+      type = "Scope"
+    }
+    resource_access {
+      id   = "e1fe6dd8-ba31-4d61-89e7-88639da4683d" # User.Read
+      type = "Scope"
+    }
+    resource_access {
+      id   = "205e70e5-aba6-4c52-a976-6d2d46c48043" # Sites.Read.All (delegated)
+      type = "Scope"
     }
   }
 }
@@ -128,7 +159,7 @@ resource "azuread_service_principal" "search_sp" {
   owners    = [data.azuread_client_config.current.object_id]
 }
 
-# Grant admin consent for Sites.Read.All (application permission)
+# Grant admin consent for Sites.FullControl.All (application permission)
 data "azuread_service_principal" "msgraph" {
   client_id = "00000003-0000-0000-c000-000000000000"
 }
@@ -137,4 +168,11 @@ resource "azuread_app_role_assignment" "sites_read_all" {
   app_role_id         = "a82116e5-55eb-4c41-a434-62fe8a61c773" # Sites.FullControl.All
   principal_object_id = azuread_service_principal.search_sp.object_id
   resource_object_id  = data.azuread_service_principal.msgraph.object_id
+}
+
+# Grant admin consent for delegated permissions (openid, profile, User.Read, Sites.Read.All)
+resource "azuread_service_principal_delegated_permission_grant" "copilot_delegated" {
+  service_principal_object_id          = azuread_service_principal.search_sp.object_id
+  resource_service_principal_object_id = data.azuread_service_principal.msgraph.object_id
+  claim_values                         = ["openid", "profile", "User.Read", "Sites.Read.All"]
 }
